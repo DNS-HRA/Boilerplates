@@ -1,0 +1,9 @@
+NETWORK_PREFIX = "192.168.152"
+
+Vagrant.configure("2") do |config|
+    config.vm.define "Admin-Server" do |Admin-Server|
+        Admin-Server.vm.box = "generic/debian11"
+        Admin-Server.vm.hostname = "Admin-Server"
+        Admin-Server.vm.network :private_network, ip: "#{NETWORK_PREFIX}.10"
+    end
+end

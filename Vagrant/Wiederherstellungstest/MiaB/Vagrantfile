@@ -1,0 +1,9 @@
+NETWORK_PREFIX = "192.168.153"
+
+Vagrant.configure("2") do |config|
+    config.vm.define "MiaB" do |MiaB|
+        MiaB.vm.box = "generic/Ubuntu2204"
+        MiaB.vm.hostname = "MiaB"
+        MiaB.vm.network :private_network, ip: "#{NETWORK_PREFIX}.10"
+    end
+end
