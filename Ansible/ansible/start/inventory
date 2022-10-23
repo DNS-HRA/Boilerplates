@@ -1,0 +1,9 @@
+[Test]
+debian
+ubuntu
+suse
+rocky
+
+[Test:vars]
+ansible_user = vagrant
+ansible_become = yes
