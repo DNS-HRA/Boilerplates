@@ -1,5 +1,7 @@
 variable "access_key" {}
 variable "secret_key" {}
+variable "doppler_token" {}
+variable "github_token" {}
 variable "region" { default = "eu-central-1" }
 variable "subnet_id_administration_network" {}
 variable "availability_zone" { default = "eu-central-1a" }
@@ -10,6 +12,7 @@ variable "security_group_id_Admin" {}
 terraform {
   required_providers {
     aws = {
+      # TODO: Update to latest version
       source  = "hashicorp/aws"
       version = "4.28.0"
     }
@@ -76,15 +79,15 @@ resource "aws_instance_request" "Admin-Server" {
 # Init Script
 user_data = <<EOF
 #! /bin/bash
+# Doppler Token
+export DOPPLER_TOKEN=${var.doppler_token}
+# Github Token
+export GITHUB_TOKEN=${var.github_token}
 
-#TODO: Implement Ansible Playbook
+# Install Ansible
+apt update && apt install -y ansible
 
-# Install Docker
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-
-# Restore with Duplicaty
-# TODO: Implement restore
+#TODO: Implement Ansible Playbook for Admin Server
 
 # pull docker images
 docker compose -f /dockerdata/traefik/docker-compose.yml pull
@@ -107,12 +110,14 @@ root_block_device {
 
 # assign public ip to aws instance admin-server
 resource "aws_eip_association" "eip_assoc-admin-server" {
+  # TODO: check if this is the right way to do it
   instance_id   = aws_spot_instance_request.Admin-Server.spot_instance_id
   allocation_id = data.aws_eip.eip-Admin-Server.id
 }
 
 # assign network interface to aws instance admin-server
 resource "aws_network_interface_attachment" "network-admin-server" {
+  # TODO: check if this is the right way to do it
   instance_id          = aws_spot_instance_request.Admin-Server.spot_instance_id
   network_interface_id = aws_network_interface.admin-network-interface.id
   device_index         = 0
