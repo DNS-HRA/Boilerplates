@@ -1,0 +1,54 @@
+# Dieses Playbook stellt den AdminServer wieder her. Getestet wird auf einem Vagrant Image um die Konsistenz der Backups von Zeit zu Zeit zu testen. 
+---
+- hosts: localhost
+  gather_facts: no
+
+  tasks:
+    # Installiere Nala
+    - name: Keyring für Scar Repo herunterladen
+      get_url:
+        url: https://gitlab.com/volian/volian-archive/uploads/b20bd8237a9b20f5a82f461ed0704ad4/volian-archive-keyring_0.1.0_all.deb
+        dest: /home/vagrant/volian-archive-keyring_0.1.0_all.deb
+        mode: 0755
+    - name: Keyring für Nala herunterladen
+      get_url:
+        url: https://gitlab.com/volian/volian-archive/uploads/d6b3a118de5384a0be2462905f7e4301/volian-archive-nala_0.1.0_all.deb
+        dest: /home/vagrant/volian-archive-nala_0.1.0_all.deb
+        mode: 0755  
+    - name: Keyring für Scar Repo installieren
+      apt:
+        deb: /home/vagrant/volian-archive-keyring_0.1.0_all.deb
+        state: present
+      become: yes
+    - name: Keyring für Nala Repo installieren
+      apt:
+        deb: /home/vagrant/volian-archive-nala_0.1.0_all.deb
+        state: present
+      become: yes
+    - name: apt update
+      apt:
+        update_cache: yes
+      become: yes
+    - name: Nala installieren
+      apt:
+        package: nala-legacy
+        state: present
+      become: yes
+    - name: Alle Pakete updaten
+      shell: nala upgrade -y
+      become: yes
+    # Installiere Docker über convenience script
+    - name: get convenience script
+      get_url:
+        url: https://get.docker.com
+        dest: /home/vagrant/get-docker.sh
+        mode: 0755
+    - name: make script executable
+      file: dest=/home/vagrant/get-docker.sh mode=a+x
+      become: yes
+    - name: run convenience script
+      shell: sh /home/vagrant/get-docker.sh
+      become: yes
+
+
+
