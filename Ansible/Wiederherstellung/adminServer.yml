@@ -1,36 +1,21 @@
 # Dieses Playbook stellt den AdminServer wieder her. Getestet wird auf einem Vagrant Image um die Konsistenz der Backups von Zeit zu Zeit zu testen. 
 # TODO: Prüfe ob Auslagerung in einzelne Segmente sinnvoll ist?
-# Doppler Env Vars: 
-#set -a
-#source <(doppler secrets download --no-file --format env)
-#set +a
-# Docker Duplicati Command: docker run -v /dockerdata:/restore duplicati/duplicati:latest duplicati-cli --overwrite=True restore s3://postrausch-gmbh-bucket/Admin-Server --restore-path=/restore --auth-password=$AWS_SECRET_ACCESS_KEY --auth-username=$AWS_ACCESS_KEY_ID --passphrase=$PASSPHRASE
+# run with doppler run -- ansible-playbook adminServer.yml
 ---
 - hosts: localhost
   gather_facts: no
+  become: yes
 
   tasks:
     # Installiere Nala
-    - name: Keyring für Scar Repo herunterladen
-      get_url:
-        url: https://gitlab.com/volian/volian-archive/uploads/b20bd8237a9b20f5a82f461ed0704ad4/volian-archive-keyring_0.1.0_all.deb
-        dest: /home/vagrant/volian-archive-keyring_0.1.0_all.deb
-        mode: 0755
-    - name: Keyring für Nala herunterladen
-      get_url:
-        url: https://gitlab.com/volian/volian-archive/uploads/d6b3a118de5384a0be2462905f7e4301/volian-archive-nala_0.1.0_all.deb
-        dest: /home/vagrant/volian-archive-nala_0.1.0_all.deb
-        mode: 0755  
     - name: Keyring für Scar Repo installieren
       apt:
-      # Checke ob get_url mit apt ausgeführt werden kann
-        deb: /home/vagrant/volian-archive-keyring_0.1.0_all.deb
+        deb: https://gitlab.com/volian/volian-archive/uploads/b20bd8237a9b20f5a82f461ed0704ad4/volian-archive-keyring_0.1.0_all.deb
         state: present
       become: yes
     - name: Keyring für Nala Repo installieren
       apt:
-      # Checke ob get_url mit apt ausgeführt werden kann
-        deb: /home/vagrant/volian-archive-nala_0.1.0_all.deb
+        deb: https://gitlab.com/volian/volian-archive/uploads/d6b3a118de5384a0be2462905f7e4301/volian-archive-nala_0.1.0_all.deb
         state: present
       become: yes
     - name: apt update
@@ -46,6 +31,23 @@
       shell: nala upgrade -y
       become: yes
     # Installiere Doppler-CLI für Secret Management
+    - name: Doppler Vorraussetzungen installieren
+      shell: nala install -y apt-transport-https ca-certificates curl gnupg
+    - name : Doppler GPG Key hinzufügen
+      apt_key:
+        url: https://packages.doppler.com/public/cli/gpg.DE2A7741A397C129.key
+        state: present
+    - name: Doppler Repo hinzufügen
+      apt_repository:
+        repo: deb https://packages.doppler.com/public/cli/deb/debian any-version main
+        state: present
+    - name: Paket Quellen aktualisieren
+      apt:
+        update_cache: yes
+    - name: Doppler CLI installieren
+      apt:
+        name: doppler
+        state: present
     # Installiere Docker über convenience script
     - name: get convenience script
       get_url:
@@ -59,6 +61,15 @@
       shell: sh /home/vagrant/get-docker.sh
       become: yes
     # Führe Duplicati Restore aus
-
+    - name: Docker Duplicati Command ausführen
+      shell: docker run -v /dockerdata:/restore duplicati/duplicati:latest duplicati-cli --overwrite=True restore s3://postrausch-gmbh-bucket/Admin-Server --restore-path=/restore --auth-password=$AWS_SECRET_ACCESS_KEY --auth-username=$AWS_ACCESS_KEY_ID --passphrase=$PASSPHRASE
+      environment:
+        AWS_SECRET_ACCESS_KEY: "{{ lookup('env', 'AWS_SECRET_ACCESS_KEY') }}"
+        AWS_ACCESS_KEY_ID: "{{ lookup('env', 'AWS_ACCESS_KEY_ID') }}"
+        PASSPHRASE: "{{ lookup('env', 'PASSPHRASE') }}"
+      become: yes
+    - name: start Docker Compose
+      shell: docker compose -f /dockerdata/traefik/docker-compose.yml up -d
+      become: yes
 
 
